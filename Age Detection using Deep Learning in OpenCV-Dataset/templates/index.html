@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion, Age & Gender Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        #uploaded-image {
+            max-width: 100%;
+            margin-top: 20px;
+            border: 2px solid #ccc;
+        }
+
+        .result-box {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #webcam {
+            margin-top: 20px;
+            border: 2px solid #ccc;
+        }
+
+        #start-webcam {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Emotion, Age & Gender Detection</h1>
+
+        <!-- Upload Image Section -->
+        <h2>Upload Image for Detection</h2>
+        <input type="file" id="file-input" accept="image/*">
+        <button onclick="uploadImage()">Detect from Image</button>
+
+        <div class="result-box" id="image-result">
+            <img id="uploaded-image" src="" alt="Processed Image">
+        </div>
+
+        <!-- Webcam Section -->
+        <h2>Use Webcam for Detection</h2>
+        <video id="webcam" width="640" height="480" autoplay></video>
+        <button id="start-webcam" onclick="startWebcam()">Start Webcam</button>
+        <button onclick="captureFrame()">Capture Frame</button>
+
+        <div class="result-box" id="webcam-result">
+            <img id="webcam-image" src="" alt="Webcam Processed Image">
+        </div>
+    </div>
+
+    <script>
+        // Function to upload an image and send it to the backend for emotion, age, and gender detection
+        function uploadImage() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select an image first.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch('/detect', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const imgUrl = data.imageUrl;
+                document.getElementById('uploaded-image').src = imgUrl;
+            })
+            .catch(error => {
+                console.error("Error uploading image:", error);
+                alert("There was an issue uploading the image.");
+            });
+        }
+
+        // Function to start webcam and display video stream
+        function startWebcam() {
+            const video = document.getElementById('webcam');
+            const constraints = {
+                video: { facingMode: "user" }
+            };
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Error accessing webcam:", err);
+                    alert("There was an issue accessing your webcam.");
+                });
+        }
+
+        // Function to capture a frame from webcam, convert it to base64, and send it to backend
+        function captureFrame() {
+            const video = document.getElementById('webcam');
+            if (!video.srcObject) {
+                alert("Webcam is not started.");
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            fetch('/detect_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const imgUrl = data.imageUrl;
+                document.getElementById('webcam-image').src = imgUrl;
+            })
+            .catch(error => {
+                console.error("Error capturing frame:", error);
+                alert("There was an issue capturing the frame.");
+            });
+        }
+    </script>
+</body>
+</html>
